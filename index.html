@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>JP Residency Registration</title>
+<style>
+    body {
+        background: linear-gradient(to right, #1c1c1c, #3a3a3a);
+        color: white;
+        font-family: Arial, sans-serif;
+    }
+    .container { max-width: 900px; margin: auto; padding: 20px; }
+    h1, h2 { text-align: center; }
+    button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    .hidden { display: none; }
+    input, select { padding: 5px; margin: 5px; width: 100%; }
+    .section { background-color: #2c2c2c; padding: 15px; margin: 10px 0; border-radius: 8px; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+    table, th, td { border: 1px solid white; }
+    th, td { padding: 8px; text-align: center; }
+</style>
+</head>
+<body>
+<div class="container" id="homePage">
+    <h1>JP Residency</h1>
+    <button id="newRegBtn">New Registration</button>
+    <button id="alreadyRegBtn">Already Registered</button>
+    <button id="ownerLoginBtn">Owner Login</button>
+</div>
+
+<div class="container hidden" id="newRegistrationPage">
+    <h2>New Registration</h2>
+
+    <div class="section">
+        <h3>Personal Information</h3>
+        <input type="text" id="fullName" placeholder="Full Name">
+        <select id="gender">
+            <option value="">Select Gender</option>
+            <option value="Male">Male</option>
+            <option value="Female">Female</option>
+            <option value="Other">Other</option>
+        </select>
+        <input type="text" id="mobile" placeholder="Mobile Number">
+        <input type="email" id="email" placeholder="Email ID">
+        <input type="text" id="address" placeholder="Full Address">
+    </div>
+
+    <div class="section">
+        <h3>ID Proof</h3>
+        <select id="idType">
+            <option value="">Select ID Type</option>
+            <option value="Aadhar Card">Aadhar Card</option>
+            <option value="PAN Card">PAN Card</option>
+            <option value="Passport">Passport</option>
+            <option value="Driving License">Driving License</option>
+        </select>
+        <input type="text" id="idNumber" placeholder="ID Number">
+        <input type="file" id="aadharImage">
+        <input type="file" id="signatureImage">
+    </div>
+
+    <div class="section">
+        <h3>Room Details</h3>
+        <input type="date" id="dateOfLiving">
+        <select id="numGuest">
+            <option value="">Number of Guests</option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+        </select>
+    </div>
+
+    <div class="section">
+        <h3>Payment Details</h3>
+        <input type="number" id="roomRent" placeholder="Room Rent per Month">
+        <input type="number" id="advancePaid" placeholder="Advance Paid">
+        <input type="number" id="prevElectric" placeholder="Previous Electric Meter Reading">
+    </div>
+
+    <div class="section">
+        <h3>Set Your Password (4 digits)</h3>
+        <input type="password" id="userPassword" maxlength="4" placeholder="Enter 4-digit password">
+    </div>
+
+    <button id="submitDetailsBtn">Submit Details</button>
+</div>
+
+<div class="container hidden" id="registrationResultPage">
+    <h2 id="welcomeMsg"></h2>
+    <p id="regInfo"></p>
+    <button id="sendToOwnerBtn">Send Details to Owner</button>
+</div>
+
+<div class="container hidden" id="alreadyRegisteredPage">
+    <h2>Already Registered</h2>
+    <input type="text" id="regNumLogin" placeholder="Registration Number">
+    <input type="password" id="regPassLogin" placeholder="Password">
+    <button id="loginUserBtn">Login</button>
+    <div id="userDetailsDisplay" class="hidden"></div>
+</div>
+
+<div class="container hidden" id="ownerLoginPage">
+    <h2>Owner Login</h2>
+    <input type="password" id="ownerPasswordInput" placeholder="Enter Owner Password">
+    <button id="ownerLoginBtnSubmit">Login as Owner</button>
+    <div id="allUsersDisplay" class="hidden"></div>
+</div>
+
+<script type="module">
+// Firebase configuration
+import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-app.js";
+import { getDatabase, ref, set, push, get, child, update } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-database.js";
+import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9.22.1/firebase-storage.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyB-e_jlc5bQHfoGZj75oHh-3Pf6YfP4dl4",
+  authDomain: "jp-residency-7c40a.firebaseapp.com",
+  databaseURL: "https://jp-residency-7c40a-default-rtdb.firebaseio.com",
+  projectId: "jp-residency-7c40a",
+  storageBucket: "jp-residency-7c40a.firebasestorage.app",
+  messagingSenderId: "509355957860",
+  appId: "1:509355957860:web:aa4b3353966dd39f62c971"
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+const storage = getStorage(app);
+
+const AMS_OWNER_PASSWORD = "AMS";
+
+// Page Elements
+const homePage = document.getElementById('homePage');
+const newRegPage = document.getElementById('newRegistrationPage');
+const alreadyRegPage = document.getElementById('alreadyRegisteredPage');
+const ownerLoginPage = document.getElementById('ownerLoginPage');
+const registrationResultPage = document.getElementById('registrationResultPage');
+
+// Navigation
+document.getElementById('newRegBtn').addEventListener('click', () => {
+    homePage.classList.add('hidden');
+    newRegPage.classList.remove('hidden');
+});
+
+document.getElementById('alreadyRegBtn').addEventListener('click', () => {
+    homePage.classList.add('hidden');
+    alreadyRegPage.classList.remove('hidden');
+});
+
+document.getElementById('ownerLoginBtn').addEventListener('click', () => {
+    homePage.classList.add('hidden');
+    ownerLoginPage.classList.remove('hidden');
+});
+
+// Submit Details
+document.getElementById('submitDetailsBtn').addEventListener('click', async () => {
+    const fullName = document.getElementById('fullName').value.trim();
+    const gender = document.getElementById('gender').value;
+    const mobile = document.getElementById('mobile').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const address = document.getElementById('address').value.trim();
+    const idType = document.getElementById('idType').value;
+    const idNumber = document.getElementById('idNumber').value.trim();
+    const aadharFile = document.getElementById('aadharImage').files[0];
+    const signFile = document.getElementById('signatureImage').files[0];
+    const dateOfLiving = document.getElementById('dateOfLiving').value;
+    const numGuest = document.getElementById('numGuest').value;
+    const roomRent = document.getElementById('roomRent').value;
+    const advancePaid = document.getElementById('advancePaid').value;
+    const prevElectric = document.getElementById('prevElectric').value;
+    const userPassword = document.getElementById('userPassword').value;
+
+    if (!fullName || !gender || !mobile || !email || !address || !idType || !idNumber || !aadharFile || !signFile || !dateOfLiving || !numGuest || !roomRent || !advancePaid || !prevElectric || !userPassword) {
+        alert("Please fill all fields and upload images");
+        return;
+    }
+
+    // Generate 4-digit registration number
+    const regNumber = Math.floor(1000 + Math.random() * 9000);
+
+    // Upload images
+    const aadharRef = sRef(storage, `users/${regNumber}_aadhar_${aadharFile.name}`);
+    const signRef = sRef(storage, `users/${regNumber}_sign_${signFile.name}`);
+    const aadharSnapshot = await uploadBytes(aadharRef, aadharFile);
+    const signSnapshot = await uploadBytes(signRef, signFile);
+    const aadharURL = await getDownloadURL(aadharRef);
+    const signURL = await getDownloadURL(signRef);
+
+    // Save to Firebase Realtime Database
+    await set(ref(db, `users/${regNumber}`), {
+        fullName, gender, mobile, email, address,
+        idType, idNumber, aadharURL, signURL,
+        dateOfLiving, numGuest, roomRent, advancePaid, prevElectric,
+        password: userPassword, registrationNumber: regNumber
+    });
+
+    // Show result page
+    newRegPage.classList.add('hidden');
+    registrationResultPage.classList.remove('hidden');
+    document.getElementById('welcomeMsg').innerText = `Welcome Mr. ${fullName} to JP Residency`;
+    document.getElementById('regInfo').innerText = `Your Registration Number is ${regNumber} and Your Password is ${userPassword}`;
+});
+
+// Send to Owner
+document.getElementById('sendToOwnerBtn').addEventListener('click', () => {
+    alert("Details sent to owner at 9942823314 (simulation)");
+});
+
+</script>
+</body>
+</html>n
